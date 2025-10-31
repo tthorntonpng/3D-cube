@@ -1,122 +1,104 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fortune Cube</title>
-  <style>
-    body {
-      margin: 0;
-      background: linear-gradient(135deg, #111, #2a2a2a);
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+
+<script>
+  // Scene + camera + renderer
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  document.body.appendChild(renderer.domElement);
+
+  // Base cube
+  const geometry = new THREE.BoxGeometry();
+  const materials = Array(6).fill().map(() => new THREE.MeshStandardMaterial({
+    color: 0x00ffff,
+    metalness: 0.7,
+    roughness: 0.2
+  }));
+  const cube = new THREE.Mesh(geometry, materials);
+  scene.add(cube);
+
+  // Eyeball (pushed farther in)
+  const eyeGeometry = new THREE.SphereGeometry(0.22, 32, 32);
+  const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff, emissive: 0x444444 });
+  const eyeball = new THREE.Mesh(eyeGeometry, eyeWhite);
+
+  const pupilGeometry = new THREE.SphereGeometry(0.07, 16, 16);
+  const pupilMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+  const pupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+  pupil.position.z = 0.12;
+  eyeball.add(pupil);
+
+  // 👁 push deeper into cube
+  eyeball.position.z = 0.35;
+  cube.add(eyeball);
+
+  // Lighting
+  const light = new THREE.PointLight(0xffffff, 1.2);
+  light.position.set(2, 2, 5);
+  scene.add(light);
+  scene.add(new THREE.AmbientLight(0x404040, 0.6));
+
+  camera.position.z = 3;
+
+  // Blink animation
+  let blink = 0, blinking = false;
+  setInterval(() => { blinking = !blinking; }, 2500);
+
+  // --- Color picker setup ---
+  const colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.style.position = 'absolute';
+  colorInput.style.display = 'none';
+  colorInput.style.zIndex = '10';
+  document.body.appendChild(colorInput);
+
+  const raycaster = new THREE.Raycaster();
+  const mouse = new THREE.Vector2();
+
+  function onClick(event) {
+    // translate mouse to normalized device coords
+    mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+    mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+
+    raycaster.setFromCamera(mouse, camera);
+    const intersects = raycaster.intersectObject(cube);
+
+    if (intersects.length > 0) {
+      const faceIndex = Math.floor(intersects[0].faceIndex / 2);
+      colorInput.style.left = event.clientX + 'px';
+      colorInput.style.top = event.clientY + 'px';
+      colorInput.style.display = 'block';
+      colorInput.onchange = e => {
+        materials[faceIndex].color.set(e.target.value);
+        colorInput.style.display = 'none';
+      };
+    }
+  }
+
+  window.addEventListener('click', onClick);
+
+  // Animation loop
+  function animate() {
+    requestAnimationFrame(animate);
+
+    cube.rotation.x += 0.01;
+    cube.rotation.y += 0.01;
+
+    if (blinking) {
+      blink += 0.2;
+      if (blink > Math.PI) { blink = 0; blinking = false; }
+      eyeball.scale.y = Math.abs(Math.cos(blink));
     }
 
-    canvas {
-      border-radius: 12px;
-      box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
-    }
-  </style>
-</head>
-<body>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    renderer.render(scene, camera);
+  }
+  animate();
 
-  <script>
-    // Scene setup
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
-
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
+  // Resize handling
+  window.addEventListener("resize", () => {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(renderer.domElement);
-
-    // Cube base
-    const geometry = new THREE.BoxGeometry();
-    const material = new THREE.MeshStandardMaterial({
-      color: 0x00ffff,
-      metalness: 0.7,
-      roughness: 0.2,
-    });
-    const cube = new THREE.Mesh(geometry, material);
-    scene.add(cube);
-
-    // Eyeball (smaller & recessed)
-    const eyeGeometry = new THREE.SphereGeometry(0.22, 32, 32);
-    const eyeWhite = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      emissive: 0x444444, // faint glow
-    });
-    const eyeball = new THREE.Mesh(eyeGeometry, eyeWhite);
-
-    // Pupil
-    const pupilGeometry = new THREE.SphereGeometry(0.07, 16, 16);
-    const pupilMaterial = new THREE.MeshStandardMaterial({
-      color: 0x000000,
-      roughness: 0.4,
-      metalness: 0.8,
-    });
-    const pupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
-    pupil.position.z = 0.12;
-    eyeball.add(pupil);
-
-    // Slightly embedded into the cube
-    eyeball.position.z = 0.43;
-    cube.add(eyeball);
-
-    // Lighting
-    const light = new THREE.PointLight(0xffffff, 1.2);
-    light.position.set(2, 2, 5);
-    scene.add(light);
-
-    const ambient = new THREE.AmbientLight(0x404040, 0.6);
-    scene.add(ambient);
-
-    camera.position.z = 3;
-
-    // Blink control
-    let blink = 0;
-    let blinking = false;
-    setInterval(() => {
-      blinking = !blinking;
-    }, 2500);
-
-    // Animate
-    function animate() {
-      requestAnimationFrame(animate);
-
-      // Auto rotation
-      cube.rotation.x += 0.01;
-      cube.rotation.y += 0.01;
-
-      // Blinking
-      if (blinking) {
-        blink += 0.2;
-        if (blink > Math.PI) {
-          blink = 0;
-          blinking = false;
-        }
-        eyeball.scale.y = Math.abs(Math.cos(blink));
-      }
-
-      renderer.render(scene, camera);
-    }
-
-    animate();
-
-    // Resize
-    window.addEventListener("resize", () => {
-      camera.aspect = window.innerWidth / window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
-    });
-  </script>
-</body>
-</html>
+  });
+</script>
