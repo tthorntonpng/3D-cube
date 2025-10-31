@@ -1,46 +1,10 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>3D Cube Demo</title>
-  <style>
-    body {
-      margin: 0;
-      background: linear-gradient(135deg, #1a1a1a, #2b2b2b);
-      overflow: hidden;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      color: white;
-      font-family: Arial, sans-serif;
-      flex-direction: column;
-    }
-
-    h1 {
-      margin-bottom: 20px;
-      font-size: 24px;
-      letter-spacing: 2px;
-    }
-
-    canvas {
-      border-radius: 12px;
-      box-shadow: 0 0 40px rgba(0, 255, 255, 0.3);
-    }
-  </style>
-</head>
 <body>
-  <h1>3D Cube</h1>
-
-  <!-- Load Three.js from CDN -->
+  <!-- No title, just the 3D scene -->
   <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
 
   <script>
-    // Create scene
+    // Scene + Camera
     const scene = new THREE.Scene();
-
-    // Create camera (FOV 75, aspect ratio, near and far clipping)
     const camera = new THREE.PerspectiveCamera(
       75,
       window.innerWidth / window.innerHeight,
@@ -48,12 +12,11 @@
       1000
     );
 
-    // Create renderer and add to document
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     document.body.appendChild(renderer.domElement);
 
-    // Create a cube (geometry + material)
+    // Cube
     const geometry = new THREE.BoxGeometry();
     const material = new THREE.MeshStandardMaterial({
       color: 0x00ffff,
@@ -63,24 +26,60 @@
     const cube = new THREE.Mesh(geometry, material);
     scene.add(cube);
 
-    // Add light
-    const light = new THREE.PointLight(0xffffff, 1);
+    // Eyeball (small sphere)
+    const eyeGeometry = new THREE.SphereGeometry(0.3, 32, 32);
+    const eyeWhite = new THREE.MeshStandardMaterial({ color: 0xffffff });
+    const eyeball = new THREE.Mesh(eyeGeometry, eyeWhite);
+
+    // Pupil
+    const pupilGeometry = new THREE.SphereGeometry(0.1, 16, 16);
+    const pupilMaterial = new THREE.MeshStandardMaterial({ color: 0x000000 });
+    const pupil = new THREE.Mesh(pupilGeometry, pupilMaterial);
+    pupil.position.z = 0.25;
+    eyeball.add(pupil);
+
+    // Position the eyeball on one face of the cube
+    eyeball.position.z = 0.5;
+    cube.add(eyeball);
+
+    // Lighting
+    const light = new THREE.PointLight(0xffffff, 1.2);
     light.position.set(2, 2, 5);
     scene.add(light);
 
-    // Camera position
     camera.position.z = 3;
 
-    // Animation loop
+    // Blink control
+    let blink = 0;
+    let blinking = false;
+    setInterval(() => {
+      blinking = !blinking;
+    }, 2500); // blink every 2.5 seconds
+
+    // Animate
     function animate() {
       requestAnimationFrame(animate);
+
+      // Auto rotation
       cube.rotation.x += 0.01;
       cube.rotation.y += 0.01;
+
+      // Blinking effect (scale the eyeball’s Y axis)
+      if (blinking) {
+        blink += 0.2;
+        if (blink > Math.PI) {
+          blink = 0;
+          blinking = false;
+        }
+        eyeball.scale.y = Math.abs(Math.cos(blink));
+      }
+
       renderer.render(scene, camera);
     }
+
     animate();
 
-    // Handle resizing
+    // Resize
     window.addEventListener("resize", () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
@@ -88,4 +87,3 @@
     });
   </script>
 </body>
-</html>
