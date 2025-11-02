@@ -104,8 +104,7 @@
     eyeball.position.z = 0.60; // slightly pushed inward (keeps proportion)
     cube.add(eyeball);
 
-    // ---------- Metallic wings (mechanical feather look) ----------
-    // wing material (reflective metal)
+    // ---------- Metallic wings ----------
     const wingMat = new THREE.MeshStandardMaterial({
       color: 0xdfe6ea,
       metalness: 0.95,
@@ -115,34 +114,28 @@
 
     function makeWing(side = 'left') {
       const wing = new THREE.Group();
-      // create layered thin plates to simulate mechanical feathers
       const plateCount = 8;
       for (let i = 0; i < plateCount; i++) {
-        const w = 0.6 + i * 0.06;     // width of plate
-        const h = 0.2 + i * 0.08;     // length of plate
+        const w = 0.6 + i * 0.06;
+        const h = 0.2 + i * 0.08;
         const thickness = 0.02;
         const geom = new THREE.BoxGeometry(w, thickness, h);
         const mesh = new THREE.Mesh(geom, wingMat);
-        // pivot offset so plates fan out
         mesh.position.set((i * 0.08) - (plateCount * 0.08 * 0.5), 0, - (i * 0.06)); 
-        mesh.rotation.y = (side === 'left' ? 0.25 : -0.25) - (i * 0.01); // slight curve
+        mesh.rotation.y = (side === 'left' ? 0.25 : -0.25) - (i * 0.01);
         mesh.rotation.z = (side === 'left' ? -0.18 : 0.18) + (i * 0.005);
         wing.add(mesh);
       }
-      // attach plate cluster to a base root (for placement)
       const root = new THREE.Object3D();
       root.add(wing);
-      // position the wing root so plates extend outward from cube side
       if (side === 'left') {
-        root.position.set(- (size/2 + 0.02), 0, 0); // left side
-        root.rotation.y = Math.PI / 12; // slight forward tilt
+        root.position.set(- (size/2 + 0.02), 0, 0);
+        root.rotation.y = Math.PI / 12;
       } else {
-        root.position.set((size/2 + 0.02), 0, 0); // right side
+        root.position.set((size/2 + 0.02), 0, 0);
         root.rotation.y = -Math.PI / 12;
       }
-      // small scale to fit aesthetics
       root.scale.set(0.95, 0.95, 0.95);
-      // return root (we'll add to cube so wings rotate with it)
       return root;
     }
 
@@ -151,11 +144,11 @@
     cube.add(leftWing);
     cube.add(rightWing);
 
-    // ---------- Clouds (unchanged but denser and faster like before) ----------
+    // ---------- Clouds (fixed paths) ----------
     const loader = new THREE.TextureLoader();
     const cloudTextures = [
-      loader.load('assets/cloud1.png'),
-      loader.load('assets/cloud2.png')
+      loader.load('cloud1.png'),
+      loader.load('cloud2.png')
     ];
 
     const clouds = [];
@@ -176,7 +169,7 @@
       clouds.push(plane);
     }
 
-    // ---------- Lights (same) ----------
+    // ---------- Lights ----------
     const pointLight = new THREE.PointLight(0xffffff, 1.3);
     pointLight.position.set(3, 3, 6);
     scene.add(pointLight);
@@ -185,22 +178,18 @@
     scene.add(fillLight);
     scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-    // ---------- Eyeball blink (unchanged) ----------
+    // ---------- Eyeball blink ----------
     let blink = 0, blinking = false;
     setInterval(() => blinking = true, 2500);
 
-    // ---------- Color picker & Raycasting (FIXED) ----------
+    // ---------- Color picker ----------
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const colorInput = document.getElementById("colorPicker");
     let activeFaceMaterialIndex = -1;
 
-    // helper: map triangle index (faceIndex) -> materialIndex using geometry.groups
     function getMaterialIndexFromFaceIndex(geom, faceIndex) {
-      // faceIndex is triangle index. For indexed buffer geometry, groups are in index units.
       if (geom.groups && geom.groups.length) {
-        // If geometry has an index (most do), groups.start/count are in the index array (not triangles).
-        // A triangle corresponds to 3 indices, so triangleStart = group.start / 3
         for (let i = 0; i < geom.groups.length; i++) {
           const g = geom.groups[i];
           const triStart = Math.floor(g.start / 3);
@@ -210,7 +199,6 @@
           }
         }
       }
-      // fallback: assume 2 triangles per face (box geometry common case)
       return Math.floor(faceIndex / 2);
     }
 
@@ -219,16 +207,12 @@
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
       mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
-      // raycast the cube
-      const intersects = raycaster.intersectObject(cube, true); // true to check descendants
+      const intersects = raycaster.intersectObject(cube, true);
       if (intersects.length) {
-        // pick the front-most intersect (already first)
         const hit = intersects[0];
-        const faceIndex = hit.faceIndex; // triangle index
-        // determine material index robustly
+        const faceIndex = hit.faceIndex;
         const matIndex = getMaterialIndexFromFaceIndex(cube.geometry, faceIndex);
         activeFaceMaterialIndex = matIndex;
-        // position color picker near pointer
         colorInput.style.left = `${event.clientX - 24}px`;
         colorInput.style.top = `${event.clientY - 20}px`;
         colorInput.style.display = 'block';
@@ -242,13 +226,10 @@
     function applyColor(e) {
       if (activeFaceMaterialIndex >= 0) {
         const col = new THREE.Color(e.target.value);
-        // make color a bit more vibrant
         col.offsetHSL(0, 0, 0.12);
-        // apply to the corresponding material (and eyelids)
         if (materials[activeFaceMaterialIndex]) {
           materials[activeFaceMaterialIndex].color.set(col);
         } else {
-          // fallback safety
           materials.forEach(m => m.color.set(col));
         }
         upperLid.material.color.set(col);
@@ -261,7 +242,7 @@
     colorInput.addEventListener('pointerdown', ev => ev.stopPropagation());
     window.addEventListener('pointerdown', onPointerDown);
 
-    // ---------- Animate loop (cube rotation, blink, cloud movement) ----------
+    // ---------- Animate loop ----------
     function animate() {
       requestAnimationFrame(animate);
       cube.rotation.x += 0.0075;
@@ -277,7 +258,6 @@
         }
       }
 
-      // move clouds
       clouds.forEach(cloud => {
         cloud.position.x += cloud.userData.speed;
         if (cloud.position.x > 35) cloud.position.x = -35;
