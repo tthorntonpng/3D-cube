@@ -39,13 +39,12 @@
     renderer.setClearColor(0x87CEFA);
     document.body.appendChild(renderer.domElement);
 
-    // ---------- Cube (original size, rounded corners) ----------
+    // ---------- Cube ----------
     const size = 1.6;
     const radius = 0.2;
     const segments = 16;
     const geometry = new THREE.BoxGeometry(size, size, size, segments, segments, segments);
 
-    // Slight corner softening (push vertices slightly toward center)
     const pos = geometry.attributes.position;
     for (let i = 0; i < pos.count; i++) {
       let x = pos.getX(i);
@@ -59,10 +58,9 @@
     }
     geometry.computeVertexNormals();
 
-    const baseColor = new THREE.Color(0xff00ff); // vibrant magenta
+    const baseColor = new THREE.Color(0xff00ff);
     const vibrantColor = baseColor.clone().offsetHSL(0, 0.15, 0.15);
 
-    // create 6 materials (one per face)
     const materials = Array.from({ length: 6 }, () =>
       new THREE.MeshStandardMaterial({
         color: vibrantColor.clone(),
@@ -75,7 +73,7 @@
     const cube = new THREE.Mesh(geometry, materials);
     scene.add(cube);
 
-    // ---------- Eyeball (unchanged) ----------
+    // ---------- Eyeball ----------
     const eyeball = new THREE.Mesh(
       new THREE.SphereGeometry(0.32, 32, 32),
       new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.2 })
@@ -101,10 +99,10 @@
     lowerLid.position.y = -0.12;
     eyeball.add(lowerLid);
 
-    eyeball.position.z = 0.60; // slightly pushed inward (keeps proportion)
+    eyeball.position.z = 0.60;
     cube.add(eyeball);
 
-    // ---------- Metallic wings ----------
+    // ---------- Metallic Wings ----------
     const wingMat = new THREE.MeshStandardMaterial({
       color: 0xdfe6ea,
       metalness: 0.95,
@@ -144,7 +142,7 @@
     cube.add(leftWing);
     cube.add(rightWing);
 
-    // ---------- Clouds (fixed paths) ----------
+    // ---------- Clouds ----------
     const loader = new THREE.TextureLoader();
     const cloudTextures = [
       loader.load('cloud1.png'),
@@ -178,11 +176,10 @@
     scene.add(fillLight);
     scene.add(new THREE.AmbientLight(0xffffff, 0.5));
 
-    // ---------- Eyeball blink ----------
+    // ---------- Blink + Color Picker ----------
     let blink = 0, blinking = false;
     setInterval(() => blinking = true, 2500);
 
-    // ---------- Color picker ----------
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
     const colorInput = document.getElementById("colorPicker");
@@ -242,7 +239,7 @@
     colorInput.addEventListener('pointerdown', ev => ev.stopPropagation());
     window.addEventListener('pointerdown', onPointerDown);
 
-    // ---------- Animate loop ----------
+    // ---------- Animate ----------
     function animate() {
       requestAnimationFrame(animate);
       cube.rotation.x += 0.0075;
