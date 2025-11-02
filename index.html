@@ -1,143 +1,270 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Fortune Cube</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>3D Character Cube with Clouds + Metallic Wings</title>
   <style>
-    html, body { height: 100%; margin: 0; }
     body {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      background: radial-gradient(circle at top, #0f0f0f, #1b1b1b 80%);
+      margin: 0;
       overflow: hidden;
-      font-family: Arial, Helvetica, sans-serif;
+      background-color: #87CEFA; /* sky blue */
     }
-    input[type="color"] {
+
+    #colorPicker {
       position: absolute;
       display: none;
-      z-index: 9999;
-      width: 48px;
-      height: 36px;
-      padding: 0;
+      z-index: 10;
       border: none;
-      background: transparent;
-    }
-    #hint {
-      position: absolute;
-      bottom: 16px;
-      left: 16px;
-      color: #ccc;
-      font-size: 13px;
-      opacity: 0.8;
-      pointer-events: none;
+      background: none;
+      width: 36px;
+      height: 36px;
+      cursor: pointer;
     }
   </style>
 </head>
 <body>
-  <input id="colorPicker" type="color" value="#00ffff" />
-  <div id="hint">Click a cube face to change its color</div>
+  <input type="color" id="colorPicker" />
 
   <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
   <script>
-    // Scene setup
+    // ---------- Scene + Camera + Renderer ----------
     const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(
-      75,
-      window.innerWidth / window.innerHeight,
-      0.1,
-      1000
-    );
-    camera.position.z = 4.5;
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.z = 4.2;
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0x87CEFA);
     document.body.appendChild(renderer.domElement);
 
-    // Cube with 6 colored faces
-    const geometry = new THREE.BoxGeometry(1.6, 1.6, 1.6);
+    // ---------- Cube (original size, rounded corners) ----------
+    const size = 1.6;
+    const radius = 0.2;
+    const segments = 16;
+    const geometry = new THREE.BoxGeometry(size, size, size, segments, segments, segments);
+
+    // Slight corner softening (push vertices slightly toward center)
+    const pos = geometry.attributes.position;
+    for (let i = 0; i < pos.count; i++) {
+      let x = pos.getX(i);
+      let y = pos.getY(i);
+      let z = pos.getZ(i);
+      const factor = radius / size;
+      x -= Math.sign(x) * factor;
+      y -= Math.sign(y) * factor;
+      z -= Math.sign(z) * factor;
+      pos.setXYZ(i, x, y, z);
+    }
+    geometry.computeVertexNormals();
+
+    const baseColor = new THREE.Color(0xff00ff); // vibrant magenta
+    const vibrantColor = baseColor.clone().offsetHSL(0, 0.15, 0.15);
+
+    // create 6 materials (one per face)
     const materials = Array.from({ length: 6 }, () =>
       new THREE.MeshStandardMaterial({
-        color: 0x00ffff,
-        metalness: 0.6,
+        color: vibrantColor.clone(),
+        metalness: 0.5,
         roughness: 0.25,
+        emissive: 0x220022,
       })
     );
+
     const cube = new THREE.Mesh(geometry, materials);
     scene.add(cube);
 
-    // Lighting
-    const pointLight = new THREE.PointLight(0xffffff, 1.2);
-    pointLight.position.set(3, 3, 5);
-    scene.add(pointLight);
-    scene.add(new THREE.AmbientLight(0x404040, 0.7));
-
-    // Eyeball
-    const eyeGeometry = new THREE.SphereGeometry(0.22, 32, 32);
-    const eyeMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
-      emissive: 0x555555,
-    });
-    const eyeball = new THREE.Mesh(eyeGeometry, eyeMaterial);
-
-    const pupilGeo = new THREE.SphereGeometry(0.07, 16, 16);
-    const pupilMat = new THREE.MeshStandardMaterial({ color: 0x000000 });
-    const pupil = new THREE.Mesh(pupilGeo, pupilMat);
-    pupil.position.z = 0.12;
+    // ---------- Eyeball (unchanged) ----------
+    const eyeball = new THREE.Mesh(
+      new THREE.SphereGeometry(0.32, 32, 32),
+      new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.2 })
+    );
+    const pupil = new THREE.Mesh(
+      new THREE.SphereGeometry(0.11, 16, 16),
+      new THREE.MeshStandardMaterial({ color: 0x000000, metalness: 0.9, roughness: 0.05 })
+    );
+    pupil.position.z = 0.29;
     eyeball.add(pupil);
 
-    // 🧿 This is key: make the eyeball face the camera
-    eyeball.position.set(0, 0, 0.81);
-    eyeball.rotation.y = Math.PI; // facing front
+    const upperLid = new THREE.Mesh(
+      new THREE.SphereGeometry(0.34, 32, 32, 0, Math.PI*2, 0, Math.PI/2),
+      new THREE.MeshStandardMaterial({ color: vibrantColor.clone(), metalness:0.5, roughness:0.25 })
+    );
+    upperLid.position.y = 0.12;
+    eyeball.add(upperLid);
+
+    const lowerLid = new THREE.Mesh(
+      new THREE.SphereGeometry(0.34, 32, 32, 0, Math.PI*2, Math.PI/2, Math.PI/2),
+      new THREE.MeshStandardMaterial({ color: vibrantColor.clone(), metalness:0.5, roughness:0.25 })
+    );
+    lowerLid.position.y = -0.12;
+    eyeball.add(lowerLid);
+
+    eyeball.position.z = 0.60; // slightly pushed inward (keeps proportion)
     cube.add(eyeball);
 
-    // Blink setup
-    let blink = 0;
-    let blinking = false;
-    setInterval(() => { blinking = true; }, 2500);
+    // ---------- Metallic wings (mechanical feather look) ----------
+    // wing material (reflective metal)
+    const wingMat = new THREE.MeshStandardMaterial({
+      color: 0xdfe6ea,
+      metalness: 0.95,
+      roughness: 0.12,
+      envMapIntensity: 0.8
+    });
 
-    // Color picker
-    const colorInput = document.getElementById("colorPicker");
+    function makeWing(side = 'left') {
+      const wing = new THREE.Group();
+      // create layered thin plates to simulate mechanical feathers
+      const plateCount = 8;
+      for (let i = 0; i < plateCount; i++) {
+        const w = 0.6 + i * 0.06;     // width of plate
+        const h = 0.2 + i * 0.08;     // length of plate
+        const thickness = 0.02;
+        const geom = new THREE.BoxGeometry(w, thickness, h);
+        const mesh = new THREE.Mesh(geom, wingMat);
+        // pivot offset so plates fan out
+        mesh.position.set((i * 0.08) - (plateCount * 0.08 * 0.5), 0, - (i * 0.06)); 
+        mesh.rotation.y = (side === 'left' ? 0.25 : -0.25) - (i * 0.01); // slight curve
+        mesh.rotation.z = (side === 'left' ? -0.18 : 0.18) + (i * 0.005);
+        wing.add(mesh);
+      }
+      // attach plate cluster to a base root (for placement)
+      const root = new THREE.Object3D();
+      root.add(wing);
+      // position the wing root so plates extend outward from cube side
+      if (side === 'left') {
+        root.position.set(- (size/2 + 0.02), 0, 0); // left side
+        root.rotation.y = Math.PI / 12; // slight forward tilt
+      } else {
+        root.position.set((size/2 + 0.02), 0, 0); // right side
+        root.rotation.y = -Math.PI / 12;
+      }
+      // small scale to fit aesthetics
+      root.scale.set(0.95, 0.95, 0.95);
+      // return root (we'll add to cube so wings rotate with it)
+      return root;
+    }
+
+    const leftWing = makeWing('left');
+    const rightWing = makeWing('right');
+    cube.add(leftWing);
+    cube.add(rightWing);
+
+    // ---------- Clouds (unchanged but denser and faster like before) ----------
+    const loader = new THREE.TextureLoader();
+    const cloudTextures = [
+      loader.load('assets/cloud1.png'),
+      loader.load('assets/cloud2.png')
+    ];
+
+    const clouds = [];
+    for (let i = 0; i < 50; i++) {
+      const tex = cloudTextures[i % cloudTextures.length];
+      const mat = new THREE.MeshBasicMaterial({
+        map: tex,
+        transparent: true,
+        opacity: 0.8,
+        side: THREE.DoubleSide
+      });
+
+      const plane = new THREE.Mesh(new THREE.PlaneGeometry(10, 10), mat);
+      plane.position.set(Math.random() * 60 - 30, Math.random() * 40 - 20, Math.random() * -60 - 10);
+      plane.rotation.z = Math.random() * Math.PI * 2;
+      plane.userData.speed = 0.01 + Math.random() * 0.015;
+      scene.add(plane);
+      clouds.push(plane);
+    }
+
+    // ---------- Lights (same) ----------
+    const pointLight = new THREE.PointLight(0xffffff, 1.3);
+    pointLight.position.set(3, 3, 6);
+    scene.add(pointLight);
+    const fillLight = new THREE.PointLight(0xff88ff, 0.8);
+    fillLight.position.set(-3, -2, -5);
+    scene.add(fillLight);
+    scene.add(new THREE.AmbientLight(0xffffff, 0.5));
+
+    // ---------- Eyeball blink (unchanged) ----------
+    let blink = 0, blinking = false;
+    setInterval(() => blinking = true, 2500);
+
+    // ---------- Color picker & Raycasting (FIXED) ----------
     const raycaster = new THREE.Raycaster();
     const mouse = new THREE.Vector2();
-    let activeFace = -1;
+    const colorInput = document.getElementById("colorPicker");
+    let activeFaceMaterialIndex = -1;
 
-    function onClick(event) {
-      // translate screen click to 3D ray
+    // helper: map triangle index (faceIndex) -> materialIndex using geometry.groups
+    function getMaterialIndexFromFaceIndex(geom, faceIndex) {
+      // faceIndex is triangle index. For indexed buffer geometry, groups are in index units.
+      if (geom.groups && geom.groups.length) {
+        // If geometry has an index (most do), groups.start/count are in the index array (not triangles).
+        // A triangle corresponds to 3 indices, so triangleStart = group.start / 3
+        for (let i = 0; i < geom.groups.length; i++) {
+          const g = geom.groups[i];
+          const triStart = Math.floor(g.start / 3);
+          const triCount = Math.floor(g.count / 3);
+          if (faceIndex >= triStart && faceIndex < triStart + triCount) {
+            return g.materialIndex;
+          }
+        }
+      }
+      // fallback: assume 2 triangles per face (box geometry common case)
+      return Math.floor(faceIndex / 2);
+    }
+
+    function onPointerDown(event) {
+      if (event.target === colorInput) return;
       mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
-      mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
+      mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
       raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObject(cube, false);
-
-      if (intersects.length > 0) {
-        const faceIndex = Math.floor(intersects[0].faceIndex / 2);
-        activeFace = faceIndex;
-        colorInput.style.left = event.clientX + "px";
-        colorInput.style.top = event.clientY + "px";
-        colorInput.style.display = "block";
-        colorInput.focus();
+      // raycast the cube
+      const intersects = raycaster.intersectObject(cube, true); // true to check descendants
+      if (intersects.length) {
+        // pick the front-most intersect (already first)
+        const hit = intersects[0];
+        const faceIndex = hit.faceIndex; // triangle index
+        // determine material index robustly
+        const matIndex = getMaterialIndexFromFaceIndex(cube.geometry, faceIndex);
+        activeFaceMaterialIndex = matIndex;
+        // position color picker near pointer
+        colorInput.style.left = `${event.clientX - 24}px`;
+        colorInput.style.top = `${event.clientY - 20}px`;
+        colorInput.style.display = 'block';
+        colorInput.click();
       } else {
-        colorInput.style.display = "none";
-        activeFace = -1;
+        colorInput.style.display = 'none';
+        activeFaceMaterialIndex = -1;
       }
     }
 
     function applyColor(e) {
-      if (activeFace >= 0 && activeFace < materials.length) {
-        materials[activeFace].color.set(e.target.value);
+      if (activeFaceMaterialIndex >= 0) {
+        const col = new THREE.Color(e.target.value);
+        // make color a bit more vibrant
+        col.offsetHSL(0, 0, 0.12);
+        // apply to the corresponding material (and eyelids)
+        if (materials[activeFaceMaterialIndex]) {
+          materials[activeFaceMaterialIndex].color.set(col);
+        } else {
+          // fallback safety
+          materials.forEach(m => m.color.set(col));
+        }
+        upperLid.material.color.set(col);
+        lowerLid.material.color.set(col);
       }
     }
 
-    colorInput.addEventListener("input", applyColor);
-    colorInput.addEventListener("change", applyColor);
-    window.addEventListener("click", onClick);
+    colorInput.addEventListener('input', applyColor);
+    colorInput.addEventListener('change', applyColor);
+    colorInput.addEventListener('pointerdown', ev => ev.stopPropagation());
+    window.addEventListener('pointerdown', onPointerDown);
 
-    // Animation loop
+    // ---------- Animate loop (cube rotation, blink, cloud movement) ----------
     function animate() {
       requestAnimationFrame(animate);
-
-      cube.rotation.x += 0.01;
+      cube.rotation.x += 0.0075;
       cube.rotation.y += 0.01;
 
       if (blinking) {
@@ -150,12 +277,18 @@
         }
       }
 
+      // move clouds
+      clouds.forEach(cloud => {
+        cloud.position.x += cloud.userData.speed;
+        if (cloud.position.x > 35) cloud.position.x = -35;
+      });
+
       renderer.render(scene, camera);
     }
     animate();
 
-    // Responsiveness
-    window.addEventListener("resize", () => {
+    // ---------- Responsive ----------
+    window.addEventListener('resize', () => {
       camera.aspect = window.innerWidth / window.innerHeight;
       camera.updateProjectionMatrix();
       renderer.setSize(window.innerWidth, window.innerHeight);
