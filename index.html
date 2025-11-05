@@ -20,10 +20,26 @@
       height: 36px;
       cursor: pointer;
     }
+    /* Bottom text hint */
+    #colorHintText {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #ffffff;
+      font-family: 'Arial', sans-serif;
+      font-size: 16px;
+      background: rgba(0,0,0,0.4);
+      padding: 6px 12px;
+      border-radius: 6px;
+      z-index: 20;
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
 <input type="color" id="colorPicker" />
+<div id="colorHintText">Click cube surfaces to change colors</div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.158.0/build/three.min.js"></script>
 <script>
@@ -59,25 +75,25 @@ scene.add(cube);
 
 // ---------- Eyeball ----------
 const eyeball = new THREE.Mesh(
-  new THREE.SphereGeometry(0.28, 32, 32),
+  new THREE.SphereGeometry(0.32, 32, 32),
   new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.2 })
 );
 const pupil = new THREE.Mesh(
-  new THREE.SphereGeometry(0.09, 16, 16),
+  new THREE.SphereGeometry(0.10, 16, 16),
   new THREE.MeshStandardMaterial({ color: 0x000000, metalness: 0.9, roughness: 0.05 })
 );
-pupil.position.z = 0.26;
+pupil.position.z = 0.30;
 eyeball.add(pupil);
 
 const upperLid = new THREE.Mesh(
-  new THREE.SphereGeometry(0.30, 32, 32, 0, Math.PI*2, 0, Math.PI/2),
+  new THREE.SphereGeometry(0.34, 32, 32, 0, Math.PI*2, 0, Math.PI/2),
   new THREE.MeshStandardMaterial({ color: vibrantColor.clone(), metalness:0.5, roughness:0.25 })
 );
 upperLid.position.y = 0.1;
 eyeball.add(upperLid);
 
 const lowerLid = new THREE.Mesh(
-  new THREE.SphereGeometry(0.30, 32, 32, 0, Math.PI*2, Math.PI/2, Math.PI/2),
+  new THREE.SphereGeometry(0.34, 32, 32, 0, Math.PI*2, Math.PI/2, Math.PI/2),
   new THREE.MeshStandardMaterial({ color: vibrantColor.clone(), metalness:0.5, roughness:0.25 })
 );
 lowerLid.position.y = -0.1;
@@ -112,12 +128,10 @@ function makeWing(side = 'left') {
   root.add(wing);
 
   if (side === 'left') {
-    // moved slightly forward to be fully inside cube
     root.position.set(- (size/2 - 0.1), 0, 0.09);
     root.rotation.y = -Math.PI / 12;
   } else if (side === 'right') {
     root.scale.x = -1;
-    // moved slightly forward to be fully inside cube
     root.position.set(size/2 - 0.1, 0, 0.09);
     root.rotation.y = Math.PI / 12;
   }
